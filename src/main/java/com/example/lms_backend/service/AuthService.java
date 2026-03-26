@@ -25,15 +25,18 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
+    private final LeaveBalanceService leaveBalanceService;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        AuthenticationManager authenticationManager,
-                       JwtTokenProvider jwtTokenProvider) {
+                       JwtTokenProvider jwtTokenProvider,
+                       LeaveBalanceService leaveBalanceService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.leaveBalanceService = leaveBalanceService;
     }
 
     @Transactional
@@ -60,7 +63,10 @@ public class AuthService {
                 .isActive(true)
                 .build();
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // Rule 10: Initialize leave balances for the new user
+        leaveBalanceService.initializeBalancesForUser(savedUser);
 
         log.info("EMAIL_SIM → To: {} | Subject: Registration Successful | Body: Welcome to LMS, {}! Your employee ID is {}.",
                 user.getEmail(), user.getFullName(), user.getEmployeeId());

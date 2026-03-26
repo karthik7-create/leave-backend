@@ -33,6 +33,18 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
+    @ExceptionHandler(LeaveOverlapException.class)
+    public ResponseEntity<ApiResponse<Void>> handleLeaveOverlap(LeaveOverlapException ex) {
+        log.warn("Leave overlap: {}", ex.getMessage());
+        return ResponseEntity.ok(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(InsufficientBalanceException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInsufficientBalance(InsufficientBalanceException ex) {
+        log.warn("Insufficient balance: {}", ex.getMessage());
+        return ResponseEntity.ok(ApiResponse.error(ex.getMessage()));
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Void>> handleBadCredentials(BadCredentialsException ex) {
         log.warn("Bad credentials: {}", ex.getMessage());
