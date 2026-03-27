@@ -33,13 +33,13 @@ public class LeaveService {
     private final UserService userService;
 
     public LeaveService(LeaveApplicationRepository leaveApplicationRepository,
-                        LeaveTypeRepository leaveTypeRepository,
-                        UserRepository userRepository,
-                        LeaveBalanceService leaveBalanceService,
-                        LeaveOverlapDetectionService overlapDetectionService,
-                        AuditService auditService,
-                        NotificationService notificationService,
-                        UserService userService) {
+            LeaveTypeRepository leaveTypeRepository,
+            UserRepository userRepository,
+            LeaveBalanceService leaveBalanceService,
+            LeaveOverlapDetectionService overlapDetectionService,
+            AuditService auditService,
+            NotificationService notificationService,
+            UserService userService) {
         this.leaveApplicationRepository = leaveApplicationRepository;
         this.leaveTypeRepository = leaveTypeRepository;
         this.userRepository = userRepository;
@@ -335,7 +335,8 @@ public class LeaveService {
                 case PENDING -> pending = count;
                 case APPROVED -> approved = count;
                 case REJECTED -> rejected = count;
-                default -> {}
+                default -> {
+                }
             }
         }
 

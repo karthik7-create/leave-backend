@@ -1,12 +1,16 @@
 package com.example.lms_backend.config;
 
 import com.example.lms_backend.entity.LeaveType;
+import com.example.lms_backend.entity.Role;
+import com.example.lms_backend.entity.User;
 import com.example.lms_backend.repository.LeaveTypeRepository;
+import com.example.lms_backend.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
 public class DataSeederConfig {
@@ -44,4 +48,29 @@ public class DataSeederConfig {
             }
         };
     }
+
+    @Bean
+    public CommandLineRunner seedDefaultAdmin(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        return args -> {
+            // Create default admin if no ADMIN user exists
+            boolean adminExists = userRepository.findAll().stream()
+                    .anyMatch(u -> u.getRole() == Role.ADMIN);
+
+            if (!adminExists) {
+                User admin = User.builder()
+                        .employeeId("ADM001")
+                        .fullName("System Admin")
+                        .email("admin@lms.com")
+                        .passwordHash(passwordEncoder.encode("admin123"))
+                        .role(Role.ADMIN)
+                        .isActive(true)
+                        .build();
+                userRepository.save(admin);
+                log.info("✅ Default admin created → Email: admin@lms.com | Password: admin123");
+            } else {
+                log.info("✅ Admin user already exists, skipping seed.");
+            }
+        };
+    }
 }
+

@@ -25,6 +25,11 @@ public class RegisterRequest {
     @Size(min = 6, max = 100, message = "Password must be between 6 and 100 characters")
     private String password;
 
-    @NotBlank(message = "Role is required")
-    private String role;
+    // Optional for public registration (defaults to EMPLOYEE)
+    // Required for admin /create-user endpoint
+    @Builder.Default
+    private String role = "EMPLOYEE";
+
+    // Optional: link employee to a manager during registration
+    private Long managerId;
 }

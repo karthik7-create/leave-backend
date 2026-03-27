@@ -28,10 +28,10 @@ public class AuthService {
     private final LeaveBalanceService leaveBalanceService;
 
     public AuthService(UserRepository userRepository,
-                       PasswordEncoder passwordEncoder,
-                       AuthenticationManager authenticationManager,
-                       JwtTokenProvider jwtTokenProvider,
-                       LeaveBalanceService leaveBalanceService) {
+            PasswordEncoder passwordEncoder,
+            AuthenticationManager authenticationManager,
+            JwtTokenProvider jwtTokenProvider,
+            LeaveBalanceService leaveBalanceService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
@@ -39,8 +39,57 @@ public class AuthService {
         this.leaveBalanceService = leaveBalanceService;
     }
 
+    /**
+     * Public registration — always creates EMPLOYEE accounts only.
+     * Role field from request is IGNORED for security.
+     */
     @Transactional
     public void register(RegisterRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalArgumentException("Email is already registered");
+        }
+
+        // SECURITY: Public registration ALWAYS creates EMPLOYEE role
+        Role role = Role.EMPLOYEE;
+
+        String employeeId = generateEmployeeId();
+
+        // Look up manager if managerId is provided
+        User manager = null;
+        if (request.getManagerId() != null) {
+            manager = userRepository.findById(request.getManagerId())
+                    .orElseThrow(
+                            () -> new IllegalArgumentException("Manager not found with id: " + request.getManagerId()));
+            if (manager.getRole() != Role.MANAGER && manager.getRole() != Role.ADMIN) {
+                throw new IllegalArgumentException("Specified user is not a manager");
+            }
+        }
+
+        User user = User.builder()
+                .employeeId(employeeId)
+                .fullName(request.getFullName())
+                .email(request.getEmail())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .role(role)
+                .manager(manager)
+                .isActive(true)
+                .build();
+
+        User savedUser = userRepository.save(user);
+
+        // Rule 10: Initialize leave balances for the new user
+        leaveBalanceService.initializeBalancesForUser(savedUser);
+
+        log.info(
+                "EMAIL_SIM → To: {} | Subject: Registration Successful | Body: Welcome to LMS, {}! Your employee ID is {}.",
+                user.getEmail(), user.getFullName(), user.getEmployeeId());
+    }
+
+    /**
+     * Admin-only registration — can create MANAGER or ADMIN accounts.
+     */
+    @Transactional
+    public void registerWithRole(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("Email is already registered");
         }
@@ -64,12 +113,10 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
-
-        // Rule 10: Initialize leave balances for the new user
         leaveBalanceService.initializeBalancesForUser(savedUser);
 
-        log.info("EMAIL_SIM → To: {} | Subject: Registration Successful | Body: Welcome to LMS, {}! Your employee ID is {}.",
-                user.getEmail(), user.getFullName(), user.getEmployeeId());
+        log.info("ADMIN_CREATE → Created {} account for {} ({})",
+                role, user.getFullName(), user.getEmployeeId());
     }
 
     public LoginResponse login(LoginRequest request) {

@@ -126,4 +126,34 @@ public class ManagerController {
         List<UserDTO> team = userService.getTeamMembers();
         return ResponseEntity.ok(ApiResponse.success("Team members retrieved successfully", team));
     }
+
+    @PutMapping("/add-member")
+    @PreAuthorize("hasRole('MANAGER')")
+    @Operation(summary = "Add employee to team",
+            description = "Manager adds an employee to their team using the employee's ID (e.g. EMP003)")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    description = "Employee added to team"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    description = "Employee not found")
+    })
+    public ResponseEntity<ApiResponse<UserDTO>> addTeamMember(@RequestParam String employeeId) {
+        UserDTO added = userService.addTeamMember(employeeId.trim().toUpperCase());
+        return ResponseEntity.ok(ApiResponse.success("Employee " + employeeId + " added to your team successfully", added));
+    }
+
+    @PutMapping("/remove-member")
+    @PreAuthorize("hasRole('MANAGER')")
+    @Operation(summary = "Remove employee from team",
+            description = "Manager removes an employee from their team using the employee's ID")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    description = "Employee removed from team"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    description = "Employee not found")
+    })
+    public ResponseEntity<ApiResponse<Void>> removeTeamMember(@RequestParam String employeeId) {
+        userService.removeTeamMember(employeeId.trim().toUpperCase());
+        return ResponseEntity.ok(ApiResponse.success("Employee " + employeeId + " removed from your team"));
+    }
 }

@@ -113,4 +113,90 @@ public class UserService {
         return userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
     }
+
+    /**
+     * PUT /api/users/{id}/assign-manager — Assign a manager to an employee
+     */
+    @Transactional
+    public UserDTO assignManager(Long employeeId, Long managerId) {
+        User employee = userRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
+
+        User manager = userRepository.findById(managerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Manager not found with id: " + managerId));
+
+        if (manager.getRole() != Role.MANAGER && manager.getRole() != Role.ADMIN) {
+            throw new IllegalArgumentException("Target user (id=" + managerId + ") does not have MANAGER or ADMIN role");
+        }
+
+        if (employee.getId().equals(manager.getId())) {
+            throw new IllegalArgumentException("A user cannot be their own manager");
+        }
+
+        employee.setManager(manager);
+        User saved = userRepository.save(employee);
+        return UserDTO.fromEntity(saved);
+    }
+
+    /**
+     * Manager adds a team member by employee ID (e.g. "EMP003").
+     */
+    @Transactional
+    public UserDTO addTeamMember(String employeeId) {
+        User manager = getCurrentUser();
+
+        if (manager.getRole() != Role.MANAGER) {
+            throw new UnauthorizedActionException("Only managers can add team members");
+        }
+
+        User employee = userRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("No employee found with ID: " + employeeId));
+
+        // Validation 1: Can't add yourself
+        if (employee.getId().equals(manager.getId())) {
+            throw new IllegalArgumentException("You cannot add yourself to your own team");
+        }
+
+        // Validation 2: Must be an EMPLOYEE
+        if (employee.getRole() != Role.EMPLOYEE) {
+            throw new IllegalArgumentException("Only employees can be added to a team. " + employeeId + " has role: " + employee.getRole());
+        }
+
+        // Validation 3: Must not already belong to another manager
+        if (employee.getManager() != null && !employee.getManager().getId().equals(manager.getId())) {
+            throw new IllegalArgumentException(employeeId + " is already assigned to another manager");
+        }
+
+        // Validation 4: Already in this team
+        if (employee.getManager() != null && employee.getManager().getId().equals(manager.getId())) {
+            throw new IllegalArgumentException(employeeId + " is already in your team");
+        }
+
+        employee.setManager(manager);
+        User saved = userRepository.save(employee);
+        return UserDTO.fromEntity(saved);
+    }
+
+    /**
+     * Manager removes a team member by employee ID.
+     */
+    @Transactional
+    public void removeTeamMember(String employeeId) {
+        User manager = getCurrentUser();
+
+        if (manager.getRole() != Role.MANAGER) {
+            throw new UnauthorizedActionException("Only managers can remove team members");
+        }
+
+        User employee = userRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("No employee found with ID: " + employeeId));
+
+        // Must be in THIS manager's team
+        if (employee.getManager() == null || !employee.getManager().getId().equals(manager.getId())) {
+            throw new IllegalArgumentException(employeeId + " is not in your team");
+        }
+
+        employee.setManager(null);
+        userRepository.save(employee);
+    }
 }
